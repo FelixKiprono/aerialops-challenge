@@ -27,5 +27,5 @@ textChatSchema.statics.build = (attrs: TextChatAttrs) => {
   return new TextChat(attrs);
 };
 // models.Chat || 
-const TextChat =  model<TextChatAttrs>("Chat", textChatSchema);
+const TextChat = model<TextChatAttrs>("Chat", textChatSchema);
 export default TextChat;
