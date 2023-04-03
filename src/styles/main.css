@@ -1,0 +1,27 @@
+/* show the button when we hover through the box */
+
+.chat-box:hover .delete-button {
+  opacity: 1;
+}
+
+/* message box */
+.chat-box {
+  background-color: white;
+  text-align: left;
+  position: relative;
+  /* padding: theme.spacing.xl; */
+  cursor: pointer;
+  /* width:message?.length*10, */
+  /* '&:hover': {
+    //   backgroundColor:
+    //     theme.colorScheme === 'dark' ? theme.colors.dark[5] : theme.colors.gray[1],
+    // }, */
+}
+.delete-button {
+  opacity: 0;
+  position: relative;
+  float: right;
+  color: white;
+  top: -20px;
+  right: -20px;
+}
