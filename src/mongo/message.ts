@@ -183,7 +183,7 @@ export const deleteChat = async ({
     const selectedChat = await TextChat.findOne({ _id: id });
     if (selectedChat) {
       // The we delete the message
-      await Chat.deleteOne({ _id: id });
+      await TextChat.deleteOne({ _id: id });
       return {
         success: true,
         message: 'Deleted',

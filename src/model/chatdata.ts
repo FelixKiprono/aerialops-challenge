@@ -26,6 +26,6 @@ const textChatSchema = new mongoose.Schema({
 textChatSchema.statics.build = (attrs: TextChatAttrs) => {
   return new TextChat(attrs);
 };
-
-const TextChat =  models.Chat || model<TextChatAttrs>("Chat", textChatSchema);
+// models.Chat || 
+const TextChat =  model<TextChatAttrs>("Chat", textChatSchema);
 export default TextChat;
