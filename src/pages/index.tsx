@@ -178,11 +178,16 @@ const IndexPage: NextPageWithLayout = () => {
                 inverse={true}
                 hasMore={true}
                 loader={
-                  <div>
+                  <div >
                     {' '}
+
+                    <center>
                     <Loader />
-                    <br />
-                    Loading more ...
+                    <br />   
+                    <Title order={5} color="blue.5">
+                       Loading more ... ⏱️
+                    </Title>
+                  </center>
                   </div>
                 }
                 scrollableTarget="scrollableDiv"

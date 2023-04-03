@@ -3,6 +3,7 @@ import moment from 'moment';
 import { boolean, date, object, string, TypeOf } from 'zod';
 import { AddMsgParams, DeleteMsgParams } from '~/server/schema/custom';
 import TextChat from '~/model/chatdata';
+
 const S3 = new AWS.S3({
   region: process.env.S3_REGION,
   accessKeyId: process.env.S3_KEY,
@@ -46,16 +47,16 @@ export const sendMessage = async ({
   input: any;
 }) => {
   if (hasImage) {
-
     const { Key, uploadUrl } = await generatePresignedUrl(fileType as string);
+
     try {
       const newchat = await TextChat.create(
         {
-          message:"sdfs",
+          message:message,
           sentAt:moment().toDate().toString(),
-          hasImage:false,
-          fileType:"sdf",
-          signedImageKey:"sdfsdf"
+          hasImage:hasImage,
+          fileType:fileType,
+          signedImageKey:Key
         }
       );
       return {
