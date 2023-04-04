@@ -103,15 +103,15 @@ export const getAllMessages = async ({
   try {
     //empty messages array
     //show 9 items per page
-    const LIMIT = 2;
+    const LIMIT = 5;
     //since this is a cursor based
     //our cursor in this case is the sentat
     //sort the messages based on the time created/sent
-    const filter = cursor?{ sentAt: { $lt: new Date(cursor) },} : {}
-   const  allMessagesFromServer = await Chat.find(filter)
-        .sort({ sentAt: -1 })
-        .limit(LIMIT + 1);
-  
+    const filter = cursor ? { sentAt: { $lt: new Date(cursor) } } : {};
+    const allMessagesFromServer = await Chat.find(filter)
+      .sort({ sentAt: -1 })
+      .limit(LIMIT + 1);
+
     // allMessagesFromServer.reverse()
     //loop through each message and get the image url if it has one
     // we check the signedImageKey property if its set
@@ -141,13 +141,15 @@ export const getAllMessages = async ({
         }
       }),
     );
-   
+
     //if the total numnber of chats are greater than the limit then we have more messages
-    const hasNext = allChats.length > LIMIT? true : false;
+    const hasNext = allChats.length > LIMIT ? true : false;
     const edges = hasNext ? allChats.slice(0, -1) : allChats;
     //set our cursor /in this case we use the sentAt time
-    const setCursor =hasNext? moment(edges[edges?.length - 1]?.sentAt).format() : ""
-   
+    const setCursor = hasNext
+      ? moment(edges[edges?.length - 1]?.sentAt).format()
+      : '';
+
     // console.log(edges)
     //get the cursor
     //basically get the last item id
