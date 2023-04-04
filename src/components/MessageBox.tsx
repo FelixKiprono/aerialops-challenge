@@ -21,7 +21,7 @@ const Toast = Swal.mixin({
   },
 });
 
-export const Message = (props: any) => {
+export const MessageBox = (props: any) => {
   const utils = trpc.useContext();
   const [slowTransitionOpened, setSlowTransitionOpened] = useState(false);
   const { id, message, sentAt, hasImage, imageUrl } = props;

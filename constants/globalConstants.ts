@@ -1,5 +1,5 @@
 // File size in kbs
-export const MAX__SIZE = 10000;
+export const MAX__SIZE = 1000;
 // Accepted file types
 export const IMAGE_TYPES = [
   'image/jpg',
