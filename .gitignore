@@ -40,3 +40,7 @@ yarn-error.log*
 
 # testing
 playwright/test-results
+
+
+#hide env 
+*.env

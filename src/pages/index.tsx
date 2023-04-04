@@ -266,11 +266,13 @@ const IndexPage: NextPageWithLayout = () => {
                 }
                 scrollableTarget="scrollableDiv"
                 endMessage={
+                  <center>
                   <p style={{ textAlign: 'center' }}>
                     <Title order={4} color="pink.5">
                       Alrighty you have seen 👓 it all! 🥁
                     </Title>
                   </p>
+                  </center>
                 }
               >
                 {message?.length > 0 && (
