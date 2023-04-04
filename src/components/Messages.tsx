@@ -67,18 +67,23 @@ export const Messages = (props: any) => {
   if (messageQuery.isLoading) {
     return (
       <>
+       <center>
         <Title order={2} color="blue.5">
-          Please wait loading ... 🕓
+        🕓 Please wait loading ... 
         </Title>
+        </center>
       </>
     );
   }
   if (!messageQuery.data?.pages.map((p) => p?.edges).length) {
     return (
       <>
-        <Title order={2} color="red.5">
-          Nothing to load ! 😢
+      <center>
+      <Title order={2} color="red.5">
+        😢 No chats to load ! 
         </Title>
+      </center>
+       
       </>
     );
   }
