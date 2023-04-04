@@ -2,8 +2,9 @@ import AWS from 'aws-sdk';
 import moment from 'moment';
 import { boolean, date, object, string, TypeOf } from 'zod';
 import { AddMsgParams, DeleteMsgParams } from '~/server/schema/custom';
-import TextChat from '~/model/chatdata';
+import Chat from '~/model/ChatModel';
 
+//S3 instance
 const S3 = new AWS.S3({
   region: process.env.S3_REGION,
   accessKeyId: process.env.S3_KEY,
@@ -11,18 +12,20 @@ const S3 = new AWS.S3({
   signatureVersion: 'v4',
 });
 
+// parameters for query
 type MsgParams = {
   cursor?: string | null;
 };
-
+//response types
 export type Response = {
   id: string;
   message?: string;
   hasImage: boolean;
-  sentAt: string;
+  sentAt: Date;
   imageUrl: string;
 };
 
+//generate presignedurl using the type and timestamp as the key
 const generatePresignedUrl = async (type: string) => {
   const timestamp = Date.now();
   const Key = `${timestamp}.${type}`;
@@ -41,39 +44,43 @@ const generatePresignedUrl = async (type: string) => {
   };
 };
 
+//add message to mongodb
 export const sendMessage = async ({
   input: { message, hasImage, sentAt, fileType },
 }: {
   input: any;
 }) => {
+  //first if it has image generate upload url
   if (hasImage) {
     const { Key, uploadUrl } = await generatePresignedUrl(fileType as string);
-
     try {
-      const newchat = await TextChat.create(
-        {
-          message:message,
-          sentAt:moment().toDate().toString(),
-          hasImage:hasImage,
-          fileType:fileType,
-          signedImageKey:Key
-        }
-      );
-      return {
-        success: true,
-        hasImage: true,
-        message: 'Message sent',
-        metadata: {
-          key: Key,
-          signedUrl: uploadUrl,
-        },
-      };
+      //crud with signedImage key that we will use when fetching the message
+      const newchat = await Chat.create({
+        message: message,
+        sentAt: moment().toDate().toString(),
+        hasImage: hasImage,
+        fileType: fileType,
+        signedImageKey: Key,
+      });
+      if (newchat) {
+        //response
+        return {
+          success: true,
+          hasImage: true,
+          message: 'Message sent',
+          metadata: {
+            key: Key,
+            signedUrl: uploadUrl,
+          },
+        };
+      }
     } catch (error) {
       console.error('Problem sending message', error);
     }
   } else {
+    //when there is no image just send normal message and timestamp
     try {
-      const sentMessageResponse = await TextChat.create({
+      const sentMessageResponse = await Chat.create({
         message: message,
         sentAt: sentAt,
       });
@@ -94,36 +101,18 @@ export const getAllMessages = async ({
   input: MsgParams;
 }) => {
   try {
-    // console.log(cursor)
     //empty messages array
-    let allMessagesFromServer = [];
-    //show 5 items per page
-    const LIMIT = 9;
+    //show 9 items per page
+    const LIMIT = 2;
     //since this is a cursor based
-    //our cursor in this case is the last item id
+    //our cursor in this case is the sentat
     //sort the messages based on the time created/sent
-    if (cursor) {
-      console.log(cursor)
-      allMessagesFromServer = await TextChat
-        .find({
-          sentAt: { $lt: cursor },
-        })
+    const filter = cursor?{ sentAt: { $lt: new Date(cursor) },} : {}
+   const  allMessagesFromServer = await Chat.find(filter)
         .sort({ sentAt: -1 })
         .limit(LIMIT + 1);
-
-    } else {
-
-      allMessagesFromServer = await TextChat.find({})
-        .sort({ sentAt: -1 })
-        .limit(LIMIT + 1);
-
-    }
-
-
-    //reverse message list to facilitate top down rendering
-    //becase looking at the array the first or item 0 is the newest item based on the sort by date
+  
     // allMessagesFromServer.reverse()
-
     //loop through each message and get the image url if it has one
     // we check the signedImageKey property if its set
     const allChats = await Promise.all(
@@ -152,45 +141,45 @@ export const getAllMessages = async ({
         }
       }),
     );
-
-    // allChats.reverse()
+   
     //if the total numnber of chats are greater than the limit then we have more messages
-    const hasNext = allChats.length > LIMIT ? true : false;
+    const hasNext = allChats.length > LIMIT? true : false;
     const edges = hasNext ? allChats.slice(0, -1) : allChats;
-
     //set our cursor /in this case we use the sentAt time
-    const setCursor = moment(edges[edges?.length - 1]?.sentAt).format();
-
+    const setCursor =hasNext? moment(edges[edges?.length - 1]?.sentAt).format() : ""
+   
+    // console.log(edges)
     //get the cursor
     //basically get the last item id
     return {
       edges: edges,
-      pageInfo: {
+      page: {
         hasNext: hasNext,
         cursor: setCursor,
       },
     };
   } catch (error) {
-    console.error('Error getting messages', error);
+    console.error('Error getting chats', error);
   }
 };
-
+//delete existing chat
 export const deleteChat = async ({
   input: { id },
 }: {
   input: DeleteMsgParams;
 }) => {
   try {
-    const selectedChat = await TextChat.findOne({ _id: id });
+    //check first if the chat really exists
+    const selectedChat = await Chat.findOne({ _id: id });
     if (selectedChat) {
-      // The we delete the message
-      await TextChat.deleteOne({ _id: id });
+      // if it is there we delete the message
+      await Chat.deleteOne({ _id: id });
       return {
         success: true,
         message: 'Deleted',
       };
     }
   } catch (error) {
-    console.error('Error deleting message', error);
+    console.error('Error deleting chat', error);
   }
 };

@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import { trpc } from '../utils/trpc';
 import { NextPageWithLayout } from './_app';
 import { inferProcedureInput } from '@trpc/server';
@@ -11,28 +11,45 @@ import {
   Text,
   Divider,
   Title,
+  Image,
+  Modal,
 } from '@mantine/core';
 import { Button, Stack, TextInput } from '@mantine/core';
 import { Message } from '~/components/MessageContent';
 import moment from 'moment';
 import { MdAttachFile } from 'react-icons/md';
 import Swal from 'sweetalert2';
-import { IMAGE_TYPES } from 'lib/globalConstants';
+import { IMAGE_TYPES, MAX__SIZE } from 'lib/globalConstants';
 import s3Upload from 'lib/s3Upload';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { AddMsgParams } from "~/server/schema/custom";
-import { useEffect } from 'react'
+import { AddMsgParams } from '~/server/schema/custom';
+import { useEffect } from 'react';
+import { connection } from 'mongoose';
+import { number } from 'zod';
 
 const IndexPage: NextPageWithLayout = () => {
-  const [message, setTypedMessage] = useState('');
+  const [slowTransitionOpened, setSlowTransitionOpened] = useState(false);
+
+  //message
+  const [message, setTypedMessage] = useState<string>('');
+  const [hasImage, setHasImage] = useState<boolean>(false);
+
+  //file
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState('');
   const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
-  const [hasImage, setHasImage] = useState(false);
+  //exttas
+  const [fileSize, setFileSize] = useState<any>();
+  const [fileType, setFileType] = useState<string>('');
+  const [filePath, setFilePath] = useState<string>('');
+  const [fileName, setFileName] = useState<string>('');
+
   const [hasNextPage, setHasNextPage] = useState<boolean>(false);
 
   const utils = trpc.useContext();
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  //init our swal as toast
   const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
@@ -45,6 +62,7 @@ const IndexPage: NextPageWithLayout = () => {
     },
   });
 
+  //file upload
   const onFileSelect = (event: any) => {
     const fileObj = event.target.files && event.target.files[0];
     if (!fileObj) {
@@ -54,25 +72,32 @@ const IndexPage: NextPageWithLayout = () => {
       });
       return;
     }
-
-    //   if(fileObj?.size> MAX__SIZE){
-    //     Toast.fire({
-    //       icon: 'error',
-    //       title: `Image should not exceed ${MAX__SIZE} kb`
-    //     })
-    //  }
+    //convert to mbs
+    const fileInMbs = fileObj?.size / 1024;
+    //check file size
+    if (fileInMbs > MAX__SIZE) {
+      Toast.fire({
+        icon: 'error',
+        title: `Image should not exceed ${MAX__SIZE} kb`,
+      });
+    }
+    //check file types
     if (!IMAGE_TYPES.includes(fileObj.type)) {
       Toast.fire({
         icon: 'error',
         title: `Image type is invalid  \n Accepted types are ${IMAGE_TYPES.toString()}`,
       });
     }
-
     // 👇️ reset file input
     event.target.value = null;
     setHasImage(true);
     setUploadedPhoto(fileObj);
     setUploadedPhotoUrl(URL.createObjectURL(fileObj));
+    setFileName(fileObj.name);
+    setFileSize(fileObj?.size);
+    setFileType(fileObj.type);
+
+    setSlowTransitionOpened(true);
   };
 
   const handleClick = () => inputRef.current?.click();
@@ -91,6 +116,9 @@ const IndexPage: NextPageWithLayout = () => {
       scrollToBottom();
       //clear the text
       setTypedMessage('');
+      setHasImage(false);
+      setUploadedPhoto(null);
+      setUploadedPhotoUrl('');
       await utils.msg.list.invalidate();
     },
     // If the mutation fails,
@@ -105,10 +133,10 @@ const IndexPage: NextPageWithLayout = () => {
       message,
       hasImage,
       fileType: uploadedPhoto?.type,
-      sentAt: moment().toDate().toString(),
+      sentAt: moment().toDate(),
     };
     try {
-      sendSms.mutateAsync(input as AddMsgParams);
+      sendSms.mutateAsync(input);
     } catch (error) {
       console.log(error);
     }
@@ -117,36 +145,85 @@ const IndexPage: NextPageWithLayout = () => {
     {},
     {
       getNextPageParam: (lastpage, allPages) => {
+        // console.log(lastpage?.page?.cursor)
         //we want the request to use our custom cursor
-        return lastpage?.pageInfo?.cursor;
+        return lastpage?.page?.cursor;
       },
       //we dont need this now
-      getPreviousPageParam: (firstPage, allPages) =>
-        firstPage?.pageInfo?.cursor,
-
+      // getPreviousPageParam: (firstPage, allPages) =>
+      //   firstPage?.page?.cursor,
       onSuccess: ({ pages }) => {
         // scrollToBottom();
-        //   //we go to the last page
-        //   //get the flag hasNext
-        setHasNextPage(pages[pages?.length - 1]?.pageInfo?.hasNext as boolean);
+        //we go to the last page from the list
+        //get the flag hasNext and set it on state so that we can use to show loading
+        setHasNextPage(pages[pages?.length - 1]?.page?.hasNext as boolean);
       },
     },
   );
-
+  //get pages
+  const pages = messageQuery?.data?.pages.map((p) => p?.edges)
+    ?.length as number;
 
   const viewport = useRef<HTMLDivElement>(null);
-
   const scrollToBottom = () =>
     viewport?.current?.scrollTo({
       top: viewport?.current?.scrollHeight,
       behavior: 'smooth',
     });
 
-  
+  //using react query loading property when loading items
+  if (messageQuery.isLoading) {
+    return (
+      <>
+        <Title order={2} color="blue.5">
+          Please wait loading ...
+        </Title>
+      </>
+    );
+  }
+  if (!messageQuery.data?.pages.map((p) => p?.edges).length) {
+    return (
+      <>
+        <Title order={2} color="red.5">
+          Nothing to load !
+        </Title>
+      </>
+    );
+  }
+
   return (
     <div>
+      <Modal
+        opened={slowTransitionOpened}
+        onClose={() => setSlowTransitionOpened(false)}
+        title="Preview Photo"
+      >
+        <center>
+          <Image
+            mx="auto"
+            radius="md"
+            width={300}
+            height={400}
+            src={uploadedPhotoUrl}
+            alt="Random unsplash image"
+            caption="Uploaded image"
+          />
+        </center>
+
+        <Divider my="sm" variant="dotted" />
+        <Text size="sm">
+          Size : {parseFloat(fileSize)} kbs<br></br>
+          Type : {fileType}
+          <br></br>
+          Filename : {fileName}
+          <br></br>
+        </Text>
+        <Button mt="xl" onClick={() => setSlowTransitionOpened(false)}>
+          Ok
+        </Button>
+      </Modal>
+
       <Container>
-        📨
         <Text
           variant="gradient"
           gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
@@ -170,24 +247,21 @@ const IndexPage: NextPageWithLayout = () => {
               }}
             >
               <InfiniteScroll
-                dataLength={0}
-                next={() => {
-                  messageQuery?.fetchNextPage();
-                }}
-                style={{ display: 'flex', flexDirection: 'column-reverse' }} 
+                dataLength={pages}
+                next={() => messageQuery.fetchNextPage()}
+                style={{ display: 'flex', flexDirection: 'column-reverse' }}
                 inverse={true}
-                hasMore={true}
+                hasMore={hasNextPage as boolean}
                 loader={
-                  <div >
+                  <div>
                     {' '}
-
                     <center>
-                    <Loader />
-                    <br />   
-                    <Title order={5} color="blue.5">
-                       Loading more ... ⏱️
-                    </Title>
-                  </center>
+                      <Loader />
+                      <br />
+                      <Title order={5} color="blue.5">
+                        Loading more ... ⏱️
+                      </Title>
+                    </center>
                   </div>
                 }
                 scrollableTarget="scrollableDiv"
@@ -203,7 +277,7 @@ const IndexPage: NextPageWithLayout = () => {
                   <Text style={{ marginLeft: 3 }}>Someone is Typing ...</Text>
                 )}
 
-                {messageQuery?.data?.pages.map((page,key) => {
+                {messageQuery?.data?.pages.map((page, key) => {
                   return page?.edges?.map(
                     ({ id, message, sentAt, hasImage, imageUrl }) => (
                       <Message
@@ -219,7 +293,6 @@ const IndexPage: NextPageWithLayout = () => {
                 })}
               </InfiniteScroll>
             </div>
-           
           </Stack>
           <div
             style={{

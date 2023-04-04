@@ -2,11 +2,10 @@ import { boolean, date, object, string, TypeOf } from "zod";
 
 const addMsgParams = object({
   message: string(),
-  sentAt: string(),
+  sentAt: date(),
   hasImage: boolean(),
   signedImageKey: string(),
   fileType: string(),
-
 })
 
 const deleteMsgParams = object({
