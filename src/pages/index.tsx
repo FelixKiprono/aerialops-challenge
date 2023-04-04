@@ -13,19 +13,24 @@ import {
   Title,
   Image,
   Modal,
+  Space,
+  Chip,
+  Dialog,
+  Popover,
 } from '@mantine/core';
 import { Button, Stack, TextInput } from '@mantine/core';
-import { Message } from '~/components/MessageContent';
 import moment from 'moment';
 import { MdAttachFile } from 'react-icons/md';
 import Swal from 'sweetalert2';
-import { IMAGE_TYPES, MAX__SIZE } from 'lib/globalConstants';
+import { IMAGE_TYPES, MAX__SIZE } from 'constants/globalConstants';
 import s3Upload from 'lib/s3Upload';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { AddMsgParams } from '~/server/schema/custom';
 import { useEffect } from 'react';
 import { connection } from 'mongoose';
 import { number } from 'zod';
+import { Messages } from '~/components/Messages';
+import { useHover } from '@mantine/hooks';
 
 const IndexPage: NextPageWithLayout = () => {
   const [slowTransitionOpened, setSlowTransitionOpened] = useState(false);
@@ -42,11 +47,15 @@ const IndexPage: NextPageWithLayout = () => {
   const [fileType, setFileType] = useState<string>('');
   const [filePath, setFilePath] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
+  const [showTyping, setShowTyping] = useState<boolean>(false);
 
-  const [hasNextPage, setHasNextPage] = useState<boolean>(false);
+  const [scrollToBottom, setScrollToBottom] = useState<boolean>(false);
+  const [sendingState, setSendingState] = useState<boolean>(false);
+
+  const [opened, setOpened] = useState(false);
 
   const utils = trpc.useContext();
-
+  const { hovered, ref } = useHover();
   const inputRef = useRef<HTMLInputElement>(null);
 
   //init our swal as toast
@@ -97,28 +106,20 @@ const IndexPage: NextPageWithLayout = () => {
     setFileSize(fileObj?.size);
     setFileType(fileObj.type);
 
-    setSlowTransitionOpened(true);
+    setOpened(true);
+
   };
-
   const handleClick = () => inputRef.current?.click();
-
   type Input = inferProcedureInput<AppRouter['msg']['add']>;
   const sendSms = trpc.msg.add.useMutation({
     // onMutate: async (newMessage) => {},
     onSuccess: async (data): Promise<void> => {
-      scrollToBottom();
       await utils.msg.list.invalidate();
       if (hasImage && data?.metadata?.signedUrl) {
         await s3Upload(uploadedPhoto as File, data?.metadata?.signedUrl);
       }
     },
     onSettled: async () => {
-      scrollToBottom();
-      //clear the text
-      setTypedMessage('');
-      setHasImage(false);
-      setUploadedPhoto(null);
-      setUploadedPhotoUrl('');
       await utils.msg.list.invalidate();
     },
     // If the mutation fails,
@@ -129,6 +130,7 @@ const IndexPage: NextPageWithLayout = () => {
   });
 
   const send = async () => {
+    setSendingState(true)
     const input = {
       message,
       hasImage,
@@ -136,94 +138,59 @@ const IndexPage: NextPageWithLayout = () => {
       sentAt: moment().toDate(),
     };
     try {
-      sendSms.mutateAsync(input);
+      await sendSms.mutateAsync(input);
+      //after sending messages
+      //clear inputs
+      setTypedMessage('');
+      setHasImage(false);
+      setUploadedPhoto(null);
+      setUploadedPhotoUrl('');
+      setScrollToBottom(true)
+      setSendingState(false)
     } catch (error) {
       console.log(error);
+        //clear inputs
+        setTypedMessage("");
+        setHasImage(false);
+        setUploadedPhoto(null);
+        setUploadedPhotoUrl('');
+        setScrollToBottom(true)
+        setSendingState(false)
+
     }
   };
-  const messageQuery = trpc.msg.list.useInfiniteQuery(
-    {},
-    {
-      getNextPageParam: (lastpage, allPages) => {
-        // console.log(lastpage?.page?.cursor)
-        //we want the request to use our custom cursor
-        return lastpage?.page?.cursor;
-      },
-      //we dont need this now
-      // getPreviousPageParam: (firstPage, allPages) =>
-      //   firstPage?.page?.cursor,
-      onSuccess: ({ pages }) => {
-        // scrollToBottom();
-        //we go to the last page from the list
-        //get the flag hasNext and set it on state so that we can use to show loading
-        setHasNextPage(pages[pages?.length - 1]?.page?.hasNext as boolean);
-      },
-    },
-  );
-  //get pages
-  const pages = messageQuery?.data?.pages.map((p) => p?.edges)
-    ?.length as number;
 
-  const viewport = useRef<HTMLDivElement>(null);
-  const scrollToBottom = () =>
-    viewport?.current?.scrollTo({
-      top: viewport?.current?.scrollHeight,
-      behavior: 'smooth',
-    });
+  //when user types and  presses enter 
+  // if use presses enter and shift we treat it as new line so we dont send message
+ const onKeyUpEvent = async (event:any) => {
+  if (event.keyCode === 13 && !event.shiftKey) {
+    event.preventDefault();
+    send()
+  }
+};
+  useEffect(()=>{
+   
+    //simple logic 
+    // console.log(message.length)
+    // if(message.length>0){
+    //   //the there is activity
+    //   const interval =  setInterval(() => {
+    //       setShowTyping(true);
+    //     }, 1000);
+    //     setShowTyping(false);
+    //   return () => clearInterval(interval);
+    // }
+    // else{
+    //   setShowTyping(false);
+    // }
+   
+  },[message])
 
-  //using react query loading property when loading items
-  if (messageQuery.isLoading) {
-    return (
-      <>
-        <Title order={2} color="blue.5">
-          Please wait loading ...
-        </Title>
-      </>
-    );
-  }
-  if (!messageQuery.data?.pages.map((p) => p?.edges).length) {
-    return (
-      <>
-        <Title order={2} color="red.5">
-          Nothing to load !
-        </Title>
-      </>
-    );
-  }
 
   return (
     <div>
-      <Modal
-        opened={slowTransitionOpened}
-        onClose={() => setSlowTransitionOpened(false)}
-        title="Preview Photo"
-      >
-        <center>
-          <Image
-            mx="auto"
-            radius="md"
-            width={300}
-            height={400}
-            src={uploadedPhotoUrl}
-            alt="Random unsplash image"
-            caption="Uploaded image"
-          />
-        </center>
-
-        <Divider my="sm" variant="dotted" />
-        <Text size="sm">
-          Size : {parseFloat(fileSize)} kbs<br></br>
-          Type : {fileType}
-          <br></br>
-          Filename : {fileName}
-          <br></br>
-        </Text>
-        <Button mt="xl" onClick={() => setSlowTransitionOpened(false)}>
-          Ok
-        </Button>
-      </Modal>
-
       <Container>
+   
         <Text
           variant="gradient"
           gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
@@ -235,68 +202,29 @@ const IndexPage: NextPageWithLayout = () => {
           TPRC Chat based App
         </Text>
         <Divider my="sm" variant="dotted" />
-        <Flex direction="column" sx={{ position: 'relative' }}>
-          <Stack align="left" sx={{ backgroundColor: '#D4D4D4' }}>
-            <div
-              id="scrollableDiv"
-              style={{
-                height: 500,
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column-reverse',
-              }}
-            >
-              <InfiniteScroll
-                dataLength={pages}
-                next={() => messageQuery.fetchNextPage()}
-                style={{ display: 'flex', flexDirection: 'column-reverse' }}
-                inverse={true}
-                hasMore={hasNextPage as boolean}
-                loader={
-                  <div>
-                    {' '}
-                    <center>
-                      <Loader />
-                      <br />
-                      <Title order={5} color="blue.5">
-                        Loading more ... ⏱️
-                      </Title>
-                    </center>
-                  </div>
-                }
-                scrollableTarget="scrollableDiv"
-                endMessage={
-                  <center>
-                  <p style={{ textAlign: 'center' }}>
-                    <Title order={4} color="pink.5">
-                      Alrighty you have seen 👓 it all! 🥁
-                    </Title>
-                  </p>
-                  </center>
-                }
-              >
-                {message?.length > 0 && (
-                  <Text style={{ marginLeft: 3 }}>Someone is Typing ...</Text>
-                )}
+       
+           <Messages scrollToBottom={scrollToBottom}/>
+           <div style={{ display: 'flex',height:'25px' }}>
+         
+           {sendingState &&
+           (<>
+           <Text
+             variant="gradient"
+              sx={{ fontFamily: 'Greycliff CF, sans-serif',margin:'2px 2px'}}
+              // ta="center"
+              fz="sm"
+              fw={700}
+            > Sending  </Text> 
+            <Space w="md" />
+            <Loader sx={{marginTop:2}} size="sm" color="blue" variant="dots"/>
 
-                {messageQuery?.data?.pages.map((page, key) => {
-                  return page?.edges?.map(
-                    ({ id, message, sentAt, hasImage, imageUrl }) => (
-                      <Message
-                        key={key}
-                        id={id.toString()}
-                        message={message}
-                        sentAt={sentAt}
-                        hasImage={hasImage}
-                        imageUrl={imageUrl}
-                      />
-                    ),
-                  );
-                })}
-              </InfiniteScroll>
-            </div>
-          </Stack>
-          <div
+          
+            </>
+           )}
+                        
+           </div>
+          
+             <div
             style={{
               display: 'flex',
               padding: '2px',
@@ -304,41 +232,73 @@ const IndexPage: NextPageWithLayout = () => {
               borderColor: '1px',
             }}
           >
+              
             <TextInput
               variant={'default'}
               onChange={(e) => setTypedMessage(e.target.value)}
               size="md"
               sx={{ flexGrow: 2 }}
               placeholder="Enter Message . . . "
+              onKeyUp={onKeyUpEvent}
             />
-            <Button
-              variant={'default'}
-              size="md"
-              sx={{ marginLeft: '5px' }}
-              onClick={handleClick}
-            >
-              <input
-                style={{ display: 'none' }}
-                type="file"
-                accept="image/*"
-                ref={inputRef}
-                onChange={onFileSelect}
-              />
-              <MdAttachFile
-                style={{ transform: 'rotate(45deg)', marginRight: '12px' }}
-                size={26}
-              />
-            </Button>
-            <Button
-              disabled={message?.length <= 0}
-              sx={{ marginLeft: '5px' }}
-              size="md"
-              onClick={send}
-            >
-              SEND
-            </Button>
+               <Popover  opened={opened} onChange={setOpened} width={200} position="top" withArrow shadow="md">
+              <Popover.Target>
+                <Button
+               onMouseEnter={() => setOpened(true)}
+               onMouseLeave={() => setOpened(false)}
+
+               variant={'default'}
+               size="md"
+               sx={{ marginLeft: '5px' }}
+               onClick={handleClick}
+             
+             >
+               <input
+                 style={{ display: 'none' }}
+                 type="file"
+                 accept="image/*"
+                 ref={inputRef}
+                 onChange={onFileSelect}
+               
+               />
+             <MdAttachFile
+             
+               style={{ transform: 'rotate(45deg)' }}
+               size={24}
+             />
+           </Button>
+         
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Image
+                  mx="auto"
+                  width={200}
+                  height={100}
+                  src={uploadedPhotoUrl}
+                  alt="Random unsplash image"
+                />
+
+        <Divider my="sm" variant="dotted" />
+        <Text size="sm">
+          Currently Uploaded : <br/>
+          Size : {parseFloat(fileSize)} kbs<br></br>
+          Type : {fileType}
+          <br></br>
+        </Text>
+              </Popover.Dropdown>
+            </Popover>
+          
+        
+              <Button
+                disabled={message?.length <= 0}
+                sx={{ marginLeft: '5px' }}
+                size="md"
+                onClick={send}
+              >
+                Send
+                 
+              </Button>
           </div>
-        </Flex>
       </Container>
     </div>
   );
