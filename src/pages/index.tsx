@@ -1,3 +1,4 @@
+'use client'
 import React from 'react';
 import { trpc } from '../utils/trpc';
 import { NextPageWithLayout } from './_app';
@@ -241,9 +242,31 @@ const IndexPage: NextPageWithLayout = () => {
               placeholder="Enter Message . . . "
               onKeyUp={onKeyUpEvent}
             />
-               <Popover  opened={opened} onChange={setOpened} width={200} position="top" withArrow shadow="md">
-              <Popover.Target>
-                <Button
+                {/* <Popover  opened={opened} onChange={setOpened} width={200} position="top" withArrow shadow="md">
+             <Popover.Target>
+             
+         
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Image
+                  mx="auto"
+                  width={200}
+                  height={100}
+                  src={uploadedPhotoUrl}
+                  alt="Random unsplash image"
+                />
+
+        <Divider my="sm" variant="dotted" />
+        <Text size="sm">
+          Currently Uploaded : <br/>
+          Size : {parseFloat(fileSize)} kbs<br></br>
+          Type : {fileType}
+          <br></br>
+        </Text>
+              </Popover.Dropdown>
+            </Popover>
+           */}
+           <Button
                onMouseEnter={() => setOpened(true)}
                onMouseLeave={() => setOpened(false)}
 
@@ -267,28 +290,6 @@ const IndexPage: NextPageWithLayout = () => {
                size={24}
              />
            </Button>
-         
-              </Popover.Target>
-              <Popover.Dropdown>
-                <Image
-                  mx="auto"
-                  width={200}
-                  height={100}
-                  src={uploadedPhotoUrl}
-                  alt="Random unsplash image"
-                />
-
-        <Divider my="sm" variant="dotted" />
-        <Text size="sm">
-          Currently Uploaded : <br/>
-          Size : {parseFloat(fileSize)} kbs<br></br>
-          Type : {fileType}
-          <br></br>
-        </Text>
-              </Popover.Dropdown>
-            </Popover>
-          
-        
               <Button
                 disabled={message?.length <= 0}
                 sx={{ marginLeft: '5px' }}
