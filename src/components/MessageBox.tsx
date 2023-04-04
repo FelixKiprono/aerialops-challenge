@@ -36,10 +36,6 @@ export const MessageBox = (props: any) => {
     },
     onSettled: async () => {
       await utils.msg.list.invalidate();
-      Toast.fire({
-        icon: 'success',
-        title: `Successfully delete message!`,
-      });
     },
   });
   //
@@ -50,7 +46,15 @@ export const MessageBox = (props: any) => {
     };
     try {
       await handleDelete.mutateAsync(input);
+      Toast.fire({
+        icon: 'success',
+        title: `Successfully deleted the message!`,
+      });
     } catch (error) {
+      Toast.fire({
+        icon: 'error',
+        title: `Ooops! cant delete message!`,
+      });
       console.error('error', error);
     }
   }, []);

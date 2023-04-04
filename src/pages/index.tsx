@@ -18,6 +18,8 @@ import {
   Chip,
   Dialog,
   Popover,
+  Paper,
+  Card,
 } from '@mantine/core';
 import { Button, Stack, TextInput } from '@mantine/core';
 import moment from 'moment';
@@ -150,13 +152,19 @@ const IndexPage: NextPageWithLayout = () => {
       setSendingState(false)
     } catch (error) {
       console.log(error);
-        //clear inputs
-        setTypedMessage("");
-        setHasImage(false);
-        setUploadedPhoto(null);
-        setUploadedPhotoUrl('');
-        setScrollToBottom(true)
-        setSendingState(false)
+        Toast.fire({
+          icon: 'error',
+          title: `Ooops! cant send message!`,
+        });
+
+    }finally{
+       //clear inputs
+       setTypedMessage("");
+       setHasImage(false);
+       setUploadedPhoto(null);
+       setUploadedPhotoUrl('');
+       setScrollToBottom(true)
+       setSendingState(false)
 
     }
   };
@@ -190,9 +198,10 @@ const IndexPage: NextPageWithLayout = () => {
 
   return (
     <div>
+      
       <Container>
-   
-        <Text
+      <Paper shadow="lg" p="md" >
+      <Text
           variant="gradient"
           gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
           sx={{ fontFamily: 'Greycliff CF, sans-serif' }}
@@ -202,7 +211,14 @@ const IndexPage: NextPageWithLayout = () => {
         >
           TPRC Chat based App
         </Text>
-        <Divider my="sm" variant="dotted" />
+      <Text>
+        
+      </Text>
+    </Paper>
+      <Paper shadow="lg" p="md" withBorder>
+     
+   
+      
        
            <Messages scrollToBottom={scrollToBottom}/>
            <div style={{ display: 'flex',height:'25px' }}>
@@ -236,6 +252,7 @@ const IndexPage: NextPageWithLayout = () => {
               
             <TextInput
               variant={'default'}
+              value={message}
               onChange={(e) => setTypedMessage(e.target.value)}
               size="md"
               sx={{ flexGrow: 2 }}
@@ -300,6 +317,7 @@ const IndexPage: NextPageWithLayout = () => {
                  
               </Button>
           </div>
+          </Paper>
       </Container>
     </div>
   );
