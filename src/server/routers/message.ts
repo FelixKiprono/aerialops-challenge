@@ -28,7 +28,7 @@ export const msgRouter = router({
         .object({
           message: z.string(),
           hasImage: z.boolean(),
-          sentAt: z.string(),
+          sentAt: z.date(),
           fileType: z.string(),
         })
         .partial(),
