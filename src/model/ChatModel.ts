@@ -21,5 +21,5 @@ const textChatSchema = new mongoose.Schema({
     type: Date,
   }
 });
-const Chat =   model<TextChatAttrs>("Chat", textChatSchema);
+const Chat =  model<TextChatAttrs>("Chat", textChatSchema);
 export default Chat;

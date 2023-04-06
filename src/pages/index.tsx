@@ -177,23 +177,7 @@ const IndexPage: NextPageWithLayout = () => {
     send()
   }
 };
-  useEffect(()=>{
-   
-    //simple logic 
-    // console.log(message.length)
-    // if(message.length>0){
-    //   //the there is activity
-    //   const interval =  setInterval(() => {
-    //       setShowTyping(true);
-    //     }, 1000);
-    //     setShowTyping(false);
-    //   return () => clearInterval(interval);
-    // }
-    // else{
-    //   setShowTyping(false);
-    // }
-   
-  },[message])
+
 
 
   return (
@@ -259,30 +243,7 @@ const IndexPage: NextPageWithLayout = () => {
               placeholder="Enter Message . . . "
               onKeyUp={onKeyUpEvent}
             />
-                {/* <Popover  opened={opened} onChange={setOpened} width={200} position="top" withArrow shadow="md">
-             <Popover.Target>
-             
-         
-              </Popover.Target>
-              <Popover.Dropdown>
-                <Image
-                  mx="auto"
-                  width={200}
-                  height={100}
-                  src={uploadedPhotoUrl}
-                  alt="Random unsplash image"
-                />
-
-        <Divider my="sm" variant="dotted" />
-        <Text size="sm">
-          Currently Uploaded : <br/>
-          Size : {parseFloat(fileSize)} kbs<br></br>
-          Type : {fileType}
-          <br></br>
-        </Text>
-              </Popover.Dropdown>
-            </Popover>
-           */}
+               
            <Button
               //  onMouseEnter={() => setOpened(true)}
               //  onMouseLeave={() => setOpened(false)}
